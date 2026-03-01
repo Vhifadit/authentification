@@ -15,6 +15,20 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+// ✅ AJOUTE CETTE ROUTE - Page d'accueil
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'API d\'authentification - Bienvenue ! 🚀',
+    status: 'En ligne',
+    endpoints: {
+      users: {
+        get: '/users - Liste tous les utilisateurs',
+        post: '/users - Créer un utilisateur'
+      }
+    }
+  });
+});
+
 // Route GET - Liste tous les utilisateurs
 app.get('/users', async (req, res) => {
   try {
