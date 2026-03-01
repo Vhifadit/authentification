@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// TABLE 1 : Utilisateurs (déjà créée)
+// ============================================
+model User {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  password           String?   // Nullable pour OAuth
+  firstName          String    @db.VarChar(100)
+  lastName           String    @db.VarChar(100)
+  emailVerifiedAt    DateTime?
+  twoFactorSecret    String?   @db.VarChar(255)
+  twoFactorEnabledAt DateTime?
+  disabledAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relations vers les autres tables
+  oauthAccounts       OAuthAccount[]
+  refreshTokens       RefreshToken[]
+  blacklistedTokens   BlacklistedAccessToken[]
+  verificationTokens  VerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+  loginHistory        LoginHistory[]
+
+  @@index([email])
+  @@index([disabledAt])
+  @@map("users")
+}
+
+// ============================================
+// TABLE 2 : Comptes OAuth (Google/GitHub)
+// ============================================
+model OAuthAccount {
+  id         String   @id @default(uuid())
+  provider   String   @db.VarChar(50)   // 'google' ou 'github'
+  providerId String   @db.VarChar(255)  // ID unique chez Google/GitHub
+  userId     String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+// ============================================
+// TABLE 3 : Refresh Tokens (sessions)
+// ============================================
+model RefreshToken {
+  id          String    @id @default(uuid())
+  token       String    @unique @db.VarChar(500)
+  userId      String
+  userAgent   String?   @db.VarChar(500)
+  ipAddress   String?   @db.VarChar(45)
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// TABLE 4 : Tokens blacklistés (déconnexion)
+// ============================================
+model BlacklistedAccessToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(500)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("blacklisted_access_tokens")
+}
+
+// ============================================
+// TABLE 5 : Tokens de vérification email
+// ============================================
+model VerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(255)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// TABLE 6 : Tokens de réinitialisation mot de passe
+// ============================================
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @db.VarChar(255)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ============================================
+// TABLE 7 : Historique des connexions
+// ============================================
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.Text
+  success   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("login_history")
+}
